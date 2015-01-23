@@ -4,8 +4,10 @@ import requests
 from requests.exceptions import ConnectionError
 from time import sleep
 from blessings import Terminal
-from pync import Notifier
 from getpass import getpass
+from sys import platform as _platform
+if _platform == 'darwin':
+    from pync import Notifier
 from chargepoint_scraper import ChargePointScraper, ChargePointAuthenticationExpiredException, ChargePointScraperException
 
 
@@ -61,7 +63,8 @@ def poll_chargepoint_stations(scraper, stations_of_interest=None, stations_to_ig
             if old_free_spots is not None and new_free_spots != old_free_spots:
                 title = '%s station(s) are open' % ', '.join(list(new_open_stations - old_open_stations))
                 message = '%d Free Spots' % new_free_spots
-                Notifier.notify(title=title, message=message)
+                if _platform == 'darwin':
+                    Notifier.notify(title=title, message=message)
                 send_boxcar_notification(title=title, message=message)
             old_free_spots = new_free_spots
             old_open_stations = new_open_stations
