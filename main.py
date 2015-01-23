@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import re
+import requests
+from requests.exceptions import ConnectionError
 from time import sleep
 from blessings import Terminal
 from pync import Notifier
@@ -11,6 +13,18 @@ def naturally_sorted(_iterable):
     return sorted(_iterable, key=lambda x: [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', x)])
 
 
+def send_boxcar_notification(title, message):
+    payload = {
+        'user_credentials': 'BOXCAR_ACCESS_TOKEN',
+        'notification[title]': title,
+        'notification[long_message]': message
+    }
+    try:
+        requests.post('https://new.boxcar.io/api/notifications', data=payload)
+    except ConnectionError:
+        pass
+
+
 def poll_chargepoint_stations(scraper, stations_of_interest=None, stations_to_ignore=None):
     if stations_to_ignore is None:
         stations_to_ignore = []
@@ -18,11 +32,13 @@ def poll_chargepoint_stations(scraper, stations_of_interest=None, stations_to_ig
         stations_of_interest = scraper.get_station_data()['stations'].keys()
     stations_of_interest = [x for x in stations_of_interest if x not in stations_to_ignore]
     old_free_spots = None
+    old_open_stations = set()
     t = Terminal()
     try:
         i = 0
         while True:
             new_free_spots = 0
+            new_open_stations = set()
             try:
                 data = scraper.get_station_data()
             except ChargePointAuthenticationExpiredException:
@@ -40,10 +56,15 @@ def poll_chargepoint_stations(scraper, stations_of_interest=None, stations_to_ig
                     line_part = t.black_on_yellow(line_part)
                 line_parts.append(line_part)
                 new_free_spots += data['stations'][k]['available']
+                new_open_stations.add(k)
             print '\t'.join(line_parts)
             if old_free_spots is not None and new_free_spots != old_free_spots:
-                Notifier.notify('%d Free Spots' % new_free_spots, title="ChargePoint Monitor")
+                title = '%s station(s) are open' % ', '.join(list(new_open_stations - old_open_stations))
+                message = '%d Free Spots' % new_free_spots
+                Notifier.notify(title=title, message=message)
+                send_boxcar_notification(title=title, message=message)
             old_free_spots = new_free_spots
+            old_open_stations = new_open_stations
             i += 1
             sleep(60)
     except KeyboardInterrupt:
