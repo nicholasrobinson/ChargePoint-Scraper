@@ -34,13 +34,13 @@ def poll_chargepoint_stations(scraper, stations_of_interest=None, stations_to_ig
         stations_of_interest = scraper.get_station_data()['stations'].keys()
     stations_of_interest = [x for x in stations_of_interest if x not in stations_to_ignore]
     old_free_spots = None
-    old_open_stations = set()
+    old_open_stations = []
     t = Terminal()
     try:
         i = 0
         while True:
             new_free_spots = 0
-            new_open_stations = set()
+            new_open_stations = []
             try:
                 data = scraper.get_station_data()
             except ChargePointAuthenticationExpiredException:
@@ -58,10 +58,16 @@ def poll_chargepoint_stations(scraper, stations_of_interest=None, stations_to_ig
                     line_part = t.black_on_yellow(line_part)
                 line_parts.append(line_part)
                 new_free_spots += data['stations'][k]['available']
-                new_open_stations.add(k)
+                new_open_stations.extend([k] * data['stations'][k]['available'])
             print '\t'.join(line_parts)
-            if old_free_spots is not None and new_free_spots != old_free_spots:
-                title = '%s station(s) are open' % ', '.join(list(new_open_stations - old_open_stations))
+            if old_free_spots is not None and new_free_spots > old_free_spots:
+                newly_open_stations = new_open_stations
+                for elem in old_open_stations:
+                    try:
+                        newly_open_stations.remove(elem)
+                    except ValueError:
+                        pass
+                title = '%s station(s) are open' % ', '.join(newly_open_stations)
                 message = '%d Free Spots' % new_free_spots
                 if _platform == 'darwin':
                     Notifier.notify(title=title, message=message)
