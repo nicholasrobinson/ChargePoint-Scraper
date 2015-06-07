@@ -89,8 +89,8 @@ if __name__ == '__main__':
         s = ChargePointScraper(username, password) #, 37.3318, -122.0312)
 
         # Optional
-        stations = filter(lambda x: 'SC-' in x or 'TA-7' in x, naturally_sorted(s.get_station_data()['stations'].keys()))
-        ignore = ['MA-1#2']
+        # stations = filter(lambda x: 'SC-' in x or 'TA-7' in x, naturally_sorted(s.get_station_data()['stations'].keys()))
+        # ignore = ['MA-1#2']
 
         poll_chargepoint_stations(s, stations_of_interest=stations, stations_to_ignore=ignore)
     except ChargePointScraperException as e:
